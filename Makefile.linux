@@ -1,6 +1,6 @@
 CXX=g++-12
-CXXFLAGS=-O3 -I. -std=c++20 -D__LINUN__
+CXXFLAGS=-O3 -I. -std=c++20
 
 all: minigemm.cpp
-	$(CXX) $(CXXFLAGS) $< -lgmpxx -lgmp -lqd
+	$(CXX) $(CXXFLAGS) $<
 
