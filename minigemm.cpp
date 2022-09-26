@@ -108,12 +108,12 @@ void minigemm(const int nn)
   ccc = agg_avg.cycles;
   //  double ccc_min = agg_min.cycles;
 #endif
-  
+
   //  printf("    m     n     k     sec    cycles\n");
-  printf("%5d %5d %5d %5.3f %e %e : %g flops\n", (int)m, (int)n, (int)k, elapsedtime,
-	 ccc, ccc/(2.0*n*n*n), (2.0*n*n*n)/ccc);
-  
-  //  printf("%5d %5d %5d %5.3f %e\n", (int)m, (int)n, (int)k, ccc, ccc/(2.0*n*n*n));
+  double ops = 2*pow((double)n,3);
+  printf("%5d %5d %5d %5.3e %e %e : %g GFlops\n", (int)m, (int)n, (int)k,
+	 elapsedtime,  ccc, ccc/ops, ops/elapsedtime/1.0e9);
+
   delete[] c;
   delete[] b;
   delete[] a;
