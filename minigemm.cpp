@@ -7,7 +7,7 @@
 //#include <gmpxx.h>
 //#include <qd/qd_real.h>
 //#include <quadmath.h>
-#define RDTSC(X)  asm volatile ("rdtsc; shlq $32,%%rdx; orq %%rdx,%%rax" : "=a" (X) :: "%rdx")
+#include "linux-perf-events.h"
 #endif
 
 #ifdef __APPLE__
@@ -45,6 +45,14 @@ void minigemm(const int nn)
   performance_counters agg_avg{0.0};
 #endif
 
+#ifdef __linux__
+  LinuxEvents<PERF_TYPE_HARDWARE> linux_events(std::vector<int>{
+      PERF_COUNT_HW_CPU_CYCLES,
+      PERF_COUNT_HW_INSTRUCTIONS,
+  });
+  std::vector<unsigned long long> results(2);
+#endif
+  
   double ccc = 0.0; // average cylces
   double elapsedtime = 0.0;
   const int LOOP = 1024;
@@ -62,10 +70,9 @@ void minigemm(const int nn)
 
     time_before = std::chrono::steady_clock::now();   
 
-    unsigned long long t1 = 0;
-    unsigned long long t2 = 0;
-    
-    RDTSC(t1);
+#ifdef __linux__    
+    linux_events.start();
+#endif
 #ifdef __APPLE__      
     performance_counters start = get_counters();
 #endif
@@ -83,12 +90,14 @@ void minigemm(const int nn)
     agg_min = agg_min.min(diff);
     agg_avg += diff;
 #endif
-    RDTSC(t2);
+#ifdef __linux__
+    linux_events.end(results);
+    ccc += (double)results[0]; // cycles;
+#endif
+    
     time_after = std::chrono::steady_clock::now();
     double time_in_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(time_after - time_before).count();
-
     elapsedtime += time_in_ns;
-    ccc += (double)(t2 - t1);
   }
   elapsedtime = elapsedtime * NANOSECOND / (double)LOOP;
   ccc = ccc/(double)LOOP;
@@ -101,8 +110,10 @@ void minigemm(const int nn)
 #endif
   
   //  printf("    m     n     k     sec    cycles\n");
-  //  printf("%5d %5d %5d %5.3f %e(%5.3f) %e\n", (int)m, (int)n, (int)k, elapsedtime, ccc, ccc_min, ccc/(2.0*n*n*n));
-  printf("%5d %5d %5d %5.3f %e\n", (int)m, (int)n, (int)k, ccc, ccc/(2.0*n*n*n));
+  printf("%5d %5d %5d %5.3f %e %e : %g flops\n", (int)m, (int)n, (int)k, elapsedtime,
+	 ccc, ccc/(2.0*n*n*n), (2.0*n*n*n)/ccc);
+  
+  //  printf("%5d %5d %5d %5.3f %e\n", (int)m, (int)n, (int)k, ccc, ccc/(2.0*n*n*n));
   delete[] c;
   delete[] b;
   delete[] a;
@@ -126,35 +137,3 @@ int main(int argc, char *argv[])
   minigemm<_Float128>(nn);
 #endif
 }
-
-#ifdef __APPLE__
-void pretty_print(std::pair<performance_counters, performance_counters> result)
-{
-  printf(" %32s ", "");
-  printf(" %8.2f instructions/float (+/- %3.1f %%) ",
-	 result.first.instructions,
-         (result.second.instructions - result.first.instructions) * 100.0 /
-	 result.first.instructions);
-
-  printf("\n");
-  printf(" %32s ", "");
-  printf(" %8.2f cycles/float (+/- %3.1f %%) ", result.first.cycles,
-         (result.second.cycles - result.first.cycles) * 100.0 /
-             result.first.cycles);
-
-  printf("\n");
-  printf(" %32s ", "");
-  printf(" %8.2f instructions/cycle ",
-         result.first.instructions / result.first.cycles);
-  printf("\n");
-  printf(" %32s ", "");
-  printf(" %8.2f branches/float (+/- %3.1f %%) ", result.first.branches,
-         (result.second.branches - result.first.branches) * 100.0 /
-             result.first.branches);
-
-  printf("\n");
-  printf(" %32s ", "");
-  printf(" %8.4f mis. branches/float ", result.second.missed_branches);
-  printf("\n");
-}
-#endif
