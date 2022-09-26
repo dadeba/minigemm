@@ -5,3 +5,5 @@ CXXFLAGS=-O3 -mcpu=neoverse-512tvb -I. -std=c++20
 all: minigemm.cpp
 	$(CXX) $(CXXFLAGS) $<
 
+highprec: minigemm.cpp
+	$(CXX) $(CXXFLAGS) -DHIGHPREC $< -lgmpxx -lgmp -lqd

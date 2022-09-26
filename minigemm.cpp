@@ -4,20 +4,17 @@
 #include "typetype.hpp"
 
 #ifdef __linux__
-//#include <gmpxx.h>
-//#include <qd/qd_real.h>
-//#include <quadmath.h>
 #include "linux-perf-events.h"
 #endif
 
 #ifdef __APPLE__
 #include "m1cycles.h"
-void pretty_print(std::pair<performance_counters, performance_counters> result);
-#define RDTSC(X)  do {} while(0);
 #endif
 
-#define MFLOPS 1e-6
-#define NANOSECOND 1e-9
+#ifdef HIGHPREC
+#include <gmpxx.h>
+#include <qd/qd_real.h>
+#endif
   
 template <typename REAL>
 void minigemm(const int nn)
@@ -99,7 +96,7 @@ void minigemm(const int nn)
     double time_in_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(time_after - time_before).count();
     elapsedtime += time_in_ns;
   }
-  elapsedtime = elapsedtime * NANOSECOND / (double)LOOP;
+  elapsedtime = elapsedtime * 1.0e-9 / (double)LOOP;
   ccc = ccc/(double)LOOP;
 
 #ifdef __APPLE__
@@ -111,8 +108,8 @@ void minigemm(const int nn)
 
   //  printf("    m     n     k     sec    cycles\n");
   double ops = 2*pow((double)n,3);
-  printf("%5d %5d %5d %5.3e %e %e : %g GFlops\n", (int)m, (int)n, (int)k,
-	 elapsedtime,  ccc, ccc/ops, ops/elapsedtime/1.0e9);
+  printf("%5d : %8.3e %e %e : %g GFlops\n", (int)n,
+	 elapsedtime, ccc, ccc/ops, ops/elapsedtime/1.0e9);
 
   delete[] c;
   delete[] b;
@@ -130,10 +127,10 @@ int main(int argc, char *argv[])
   minigemm<double>(nn);
   minigemm<_Float16>(nn);
 
-#ifdef __linux__
-  //  minigemm<dd_real>(nn);
-  //  minigemm<qd_real>(nn);
-  //  minigemm<mpf_class>(nn);
+#ifdef HIGHPREC
+  minigemm<dd_real>(nn);
+  minigemm<qd_real>(nn);
+  minigemm<mpf_class>(nn);
   minigemm<_Float128>(nn);
 #endif
 }

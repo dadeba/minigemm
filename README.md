@@ -9,6 +9,11 @@ sudo ./a.out
 Linux with g++-12
 ```
 make -f Makefile.linux
-./a.out
+sudo ./a.out
 ```
 
+ARMv8(AWS graviton3/Ubuntu 20.04LTS)
+```
+make -f Makefile.graviton3
+sudo ./a.out
+```
