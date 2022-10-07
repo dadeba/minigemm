@@ -61,7 +61,4 @@ inline performance_counters operator-(const performance_counters &a,
 }
 
 void setup_performance_counters();
-
-//extern performance_counters get_counters();
-
 #endif

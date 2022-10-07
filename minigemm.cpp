@@ -8,6 +8,10 @@
 #include "linux-perf-events.h"
 #endif
 
+#ifdef __APPLE__
+#include "m1cycles.cpp"
+#endif
+
 #ifdef HIGHPREC
 #include <gmpxx.h>
 #include <qd/qd_real.h>
@@ -73,17 +77,15 @@ void minigemm(const int nn)
     elapsedtime += time_in_ns;
   }
   elapsedtime = elapsedtime * 1.0e-9 / (double)LOOP;
-
   agg_avg /= (double)LOOP;
-  agg_min /= 1;
 
-  //  printf("    m     n     k     sec    cycles\n");
-  double ops = 2*pow((double)n,3);
-  printf("%5d : %8.3e %3.2e(%3.2e) %3.2e(%3.2e) : %3.2e : %8.4g GFlops\n", (int)n,
-	 elapsedtime,
-	 agg_avg.cycles, agg_min.cycles,
-	 agg_avg.instructions, agg_min.instructions,
-	 agg_avg.cycles/ops, ops/elapsedtime/1.0e9);
+  double ops = 2.0*pow((double)n,3);
+  printf("%5d : %8.3e %3.2e %3.2e : %5.3g : %8.4g GFlops\n", (int)n,
+         elapsedtime,
+	 agg_avg.cycles,
+	 agg_avg.instructions,
+	 ops/agg_avg.cycles,
+	 ops/elapsedtime/1.0e9);
 
   delete[] c;
   delete[] b;
@@ -94,7 +96,7 @@ int main(int argc, char *argv[])
 {
   setup_performance_counters();
   
-  const int nn = 199;
+  const int nn = 399;
   minigemm<float>(nn);
   minigemm<double>(nn);
   minigemm<_Float16>(nn);
