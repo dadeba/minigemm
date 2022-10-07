@@ -137,7 +137,7 @@ void setup_performance_counters(void) {
   configure_rdtsc();
 }
 
-extern performance_counters get_counters(void) {
+extern performance_counters get_counters(bool flag = false) {
   static bool warned = false;
   if (kpc_get_thread_counters(0, COUNTERS_COUNT, g_counters)) {
     if (!warned) {

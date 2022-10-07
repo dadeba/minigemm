@@ -97,6 +97,29 @@ private:
     working = false;
   }
 };
+
+static LinuxEvents<PERF_TYPE_HARDWARE> linux_events(std::vector<int>{
+      PERF_COUNT_HW_CPU_CYCLES,
+      PERF_COUNT_HW_INSTRUCTIONS,
+      });
+
+void setup_performance_counters()
+{
+}
+
+performance_counters get_counters(bool flag = false) {
+  if (flag) {
+    std::vector<unsigned long long> results(2);
+    linux_events.end(results);
+    // g_counters[3 + 2] gives you the number of instructions 'decoded'
+    // whereas g_counters[1] might give you the number of instructions 'retired'.
+    return performance_counters{(double)results[0], 0, 0, (double)results[1]};
+  } else {
+    linux_events.start();
+    return performance_counters{0.0, 0.0, 0.0, 0.0};
+  }
+}
+
 #else
 #warning "Linux expected."
 #endif

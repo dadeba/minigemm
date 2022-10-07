@@ -2,13 +2,10 @@
 #include <iostream>
 #include <chrono>
 #include "typetype.hpp"
+#include "m1cycles.h"
 
 #ifdef __linux__
 #include "linux-perf-events.h"
-#endif
-
-#ifdef __APPLE__
-#include "m1cycles.h"
 #endif
 
 #ifdef HIGHPREC
@@ -37,22 +34,11 @@ void minigemm(const int nn)
   REAL *b = new REAL [lda * n];
   REAL *c = new REAL [lda * n];
 
-#ifdef __APPLE__  
   performance_counters agg_min{1e300};
   performance_counters agg_avg{0.0};
-#endif
-
-#ifdef __linux__
-  LinuxEvents<PERF_TYPE_HARDWARE> linux_events(std::vector<int>{
-      PERF_COUNT_HW_CPU_CYCLES,
-      PERF_COUNT_HW_INSTRUCTIONS,
-  });
-  std::vector<unsigned long long> results(2);
-#endif
   
-  double ccc = 0.0; // average cylces
   double elapsedtime = 0.0;
-  const int LOOP = 1024;
+  const int LOOP = 32;
   for (int jj = 0; jj < LOOP; jj++) {
     for(int j = 0; j < n; j++) {
       for(int i = 0; i < n; i++) {
@@ -67,12 +53,7 @@ void minigemm(const int nn)
 
     time_before = std::chrono::steady_clock::now();   
 
-#ifdef __linux__    
-    linux_events.start();
-#endif
-#ifdef __APPLE__      
     performance_counters start = get_counters();
-#endif
     for (int j = 0; j < n; j++) {
       for (int l = 0; l < k; l++) {
 	REAL temp = b[j*lda+l];
@@ -81,35 +62,28 @@ void minigemm(const int nn)
 	}
       }
     }
-#ifdef __APPLE__
-    performance_counters end = get_counters();
+    performance_counters end = get_counters(true);
     performance_counters diff = end - start;
+
     agg_min = agg_min.min(diff);
     agg_avg += diff;
-#endif
-#ifdef __linux__
-    linux_events.end(results);
-    ccc += (double)results[0]; // cycles;
-#endif
     
     time_after = std::chrono::steady_clock::now();
     double time_in_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(time_after - time_before).count();
     elapsedtime += time_in_ns;
   }
   elapsedtime = elapsedtime * 1.0e-9 / (double)LOOP;
-  ccc = ccc/(double)LOOP;
 
-#ifdef __APPLE__
   agg_avg /= (double)LOOP;
   agg_min /= 1;
-  ccc = agg_avg.cycles;
-  //  double ccc_min = agg_min.cycles;
-#endif
 
   //  printf("    m     n     k     sec    cycles\n");
   double ops = 2*pow((double)n,3);
-  printf("%5d : %8.3e %e %e : %g GFlops\n", (int)n,
-	 elapsedtime, ccc, ccc/ops, ops/elapsedtime/1.0e9);
+  printf("%5d : %8.3e %3.2e(%3.2e) %3.2e(%3.2e) : %3.2e : %8.4g GFlops\n", (int)n,
+	 elapsedtime,
+	 agg_avg.cycles, agg_min.cycles,
+	 agg_avg.instructions, agg_min.instructions,
+	 agg_avg.cycles/ops, ops/elapsedtime/1.0e9);
 
   delete[] c;
   delete[] b;
@@ -118,11 +92,9 @@ void minigemm(const int nn)
 
 int main(int argc, char *argv[])
 {
-#ifdef __APPLE__
   setup_performance_counters();
-#endif
   
-  const int nn = 64;
+  const int nn = 199;
   minigemm<float>(nn);
   minigemm<double>(nn);
   minigemm<_Float16>(nn);
